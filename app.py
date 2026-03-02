@@ -99,13 +99,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─── Plotly theme ─────────────────────────────────────────────────────────────
+# xaxis/yaxis are NOT inside PLOTLY_THEME to avoid duplicate-keyword crashes
+# when individual charts also pass yaxis= explicitly. Use _apply_theme() instead.
 PLOTLY_THEME = dict(
     paper_bgcolor='#0e1117',
     plot_bgcolor='#161b27',
     font=dict(color='#8892b0', family='monospace'),
-    xaxis=dict(gridcolor='#1e2640', linecolor='#2d3561'),
-    yaxis=dict(gridcolor='#1e2640', linecolor='#2d3561'),
 )
+_AXES = dict(gridcolor='#1e2640', linecolor='#2d3561')
+
+def _apply_theme(fig, **kwargs):
+    """Apply dark theme + axis grid, then any extra layout kwargs."""
+    _apply_theme(fig, **kwargs)
+    fig.update_xaxes(**_AXES)
+    fig.update_yaxes(**_AXES)
+    return fig
 
 GREEN  = '#6bcb77'
 RED    = '#ff6b6b'
@@ -174,7 +182,7 @@ def chart_bankroll(rounds_df):
     fig.add_trace(go.Scatter(x=rounds_df['round_num'], y=roll50,
         line=dict(color=YELLOW, width=1.5, dash='dot'), name='50-round avg'))
     fig.add_hline(y=0, line_color='#2d3561', line_width=1)
-    fig.update_layout(**PLOTLY_THEME, height=340,
+    _apply_theme(fig, height=340,
         margin=dict(l=10, r=10, t=30, b=10),
         legend=dict(orientation='h', y=1.05, bgcolor='rgba(0,0,0,0)'),
         title=dict(text='Cumulative P&L', font=dict(color=CYAN, size=14)),
@@ -188,7 +196,7 @@ def chart_round_pnl(rounds_df):
         x=rounds_df['round_num'], y=rounds_df['bot_payoff'],
         marker_color=colors, marker_line_width=0))
     fig.add_hline(y=0, line_color='#2d3561')
-    fig.update_layout(**PLOTLY_THEME, height=240,
+    _apply_theme(fig, height=240,
         margin=dict(l=10, r=10, t=30, b=10),
         title=dict(text='Per-Round P&L', font=dict(color=CYAN, size=14)),
         xaxis_title='Round', yaxis_title='Chips')
@@ -208,7 +216,7 @@ def chart_auction_dist(rounds_df, bot_name):
         fig.add_vline(x=bot_bids.mean(), line_color=YELLOW,
             line_dash='dot', annotation_text=f"Mean {bot_bids.mean():.0f}",
             annotation_font_color=YELLOW)
-    fig.update_layout(**PLOTLY_THEME, height=320,
+    _apply_theme(fig, height=320,
         barmode='overlay', margin=dict(l=10, r=10, t=30, b=10),
         title=dict(text='Auction Bid Distribution', font=dict(color=CYAN, size=14)),
         xaxis_title='Bid (chips)', yaxis_title='Count',
@@ -232,7 +240,7 @@ def chart_auction_ev(rounds_df, bot_name):
         text=[f'{v:+.1f}' for v in values], textposition='outside',
         textfont=dict(color='white'), marker_line_width=0))
     fig.add_hline(y=0, line_color='#2d3561')
-    fig.update_layout(**PLOTLY_THEME, height=300,
+    _apply_theme(fig, height=300,
         margin=dict(l=10, r=10, t=30, b=10),
         title=dict(text='Avg Profit by Auction Outcome', font=dict(color=CYAN, size=14)),
         yaxis_title='Avg Chips/Round')
@@ -253,7 +261,7 @@ def chart_bid_vs_strength(rounds_df):
             continue
         fig.add_trace(go.Box(y=sub, name=bucket, marker_color=pal.get(bucket, CYAN),
             boxmean=True, line=dict(color=pal.get(bucket, CYAN))))
-    fig.update_layout(**PLOTLY_THEME, height=320,
+    _apply_theme(fig, height=320,
         margin=dict(l=10, r=10, t=30, b=10),
         title=dict(text='Bid Amount vs Hand Strength', font=dict(color=CYAN, size=14)),
         yaxis_title='Bid (chips)')
@@ -279,7 +287,7 @@ def chart_action_frequency(actions_df, bot_name):
                 textfont=dict(color='white', size=11)),
                 row=1, col=col)
 
-    fig.update_layout(**PLOTLY_THEME, height=320,
+    _apply_theme(fig, height=320,
         margin=dict(l=10, r=10, t=40, b=10),
         title=dict(text='Action Frequency by Street', font=dict(color=CYAN, size=14)),
         barmode='group',
@@ -306,7 +314,7 @@ def chart_profit_by_street(profit_by_street):
         textfont=dict(color='white'), marker_line_width=0), row=1, col=2)
     fig.add_hline(y=0, line_color='#2d3561', row=1, col=1)
     fig.add_hline(y=0, line_color='#2d3561', row=1, col=2)
-    fig.update_layout(**PLOTLY_THEME, height=320,
+    _apply_theme(fig, height=320,
         margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
     return fig
 
@@ -334,7 +342,7 @@ def chart_fold_heatmap(rounds_df, actions_df, bot_name):
         textfont=dict(size=13, color='white'),
         colorbar=dict(title='Fold %', tickfont=dict(color='#8892b0'),
                       titlefont=dict(color='#8892b0'))))
-    fig.update_layout(**PLOTLY_THEME, height=320,
+    _apply_theme(fig, height=320,
         margin=dict(l=10, r=10, t=40, b=10),
         title=dict(text='Fold Rate by Hand Strength & Position', font=dict(color=CYAN, size=14)),
         xaxis_title='Position', yaxis_title='Hand Strength')
@@ -355,7 +363,7 @@ def chart_opponent_breakdown(rounds_df):
         marker_color=[GREEN if v >= 0 else RED for v in df['mean']],
         text=[f'{v:+.1f}' for v in df['mean']], textposition='outside',
         textfont=dict(color='white'), marker_line_width=0), row=1, col=2)
-    fig.update_layout(**PLOTLY_THEME, height=320,
+    _apply_theme(fig, height=320,
         margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
     return fig
 
@@ -368,11 +376,11 @@ def chart_rolling_winrate(rounds_df, window=50):
         line=dict(color=CYAN, width=1.8), name=f'{window}-round win rate'))
     fig.add_hline(y=50, line_color=YELLOW, line_dash='dot',
         annotation_text='50%', annotation_font_color=YELLOW)
-    fig.update_layout(**PLOTLY_THEME, height=280,
+    _apply_theme(fig, height=280,
         margin=dict(l=10, r=10, t=30, b=10),
         title=dict(text=f'Rolling {window}-Round Win Rate', font=dict(color=CYAN, size=14)),
-        xaxis_title='Round', yaxis_title='Win Rate (%)',
-        yaxis=dict(**PLOTLY_THEME['yaxis'], range=[0, 100]))
+        xaxis_title='Round', yaxis_title='Win Rate (%)')
+    fig.update_yaxes(range=[0, 100])
     return fig
 
 
@@ -389,7 +397,7 @@ def chart_street_pnl_scatter(rounds_df):
         mode='markers', name='Lost Auction',
         marker=dict(color=PURPLE, size=5, opacity=0.6)))
     fig.add_hline(y=0, line_color='#2d3561')
-    fig.update_layout(**PLOTLY_THEME, height=300,
+    _apply_theme(fig, height=300,
         margin=dict(l=10, r=10, t=30, b=10),
         title=dict(text='Round P&L by Auction Outcome', font=dict(color=CYAN, size=14)),
         xaxis_title='Round', yaxis_title='Chips',
@@ -413,7 +421,7 @@ def chart_position_breakdown(rounds_df):
         marker_color=[GREEN if v >= 0 else RED for v in df['avg']],
         text=[f'{v:+.1f}' for v in df['avg']], textposition='outside',
         textfont=dict(color='white')), row=1, col=2)
-    fig.update_layout(**PLOTLY_THEME, height=300,
+    _apply_theme(fig, height=300,
         margin=dict(l=10, r=10, t=40, b=10), showlegend=False)
     return fig
 
@@ -431,7 +439,7 @@ def chart_version_delta(comp_df):
         text=[f'{v:+.3f}' for v in sub.values], textposition='outside',
         textfont=dict(color='white')))
     fig.add_vline(x=0, line_color='#2d3561')
-    fig.update_layout(**PLOTLY__THEME if False else PLOTLY_THEME, height=max(350, len(sub) * 28),
+    fig.update_layout(**PLOTLY_THEME, height=max(350, len(sub) * 28),
         margin=dict(l=10, r=60, t=40, b=10),
         title=dict(text=f'Version Delta: {col}', font=dict(color=CYAN, size=14)),
         xaxis_title='Change')
@@ -528,10 +536,10 @@ with st.sidebar:
 
     st.markdown("### 📂 Upload Log Files")
     uploaded_files = st.file_uploader(
-        "Drop .glog or .fz files",
-        type=['glog', 'fz', 'txt', 'log'],
+        "Drop log files (.glog, .fz, .log, .log.gh, etc.)",
+        type=None,
         accept_multiple_files=True,
-        help="Upload one or more game logs from the IIT Pokerbots engine"
+        help="Upload any IIT Pokerbots game log file — any extension is accepted"
     )
     bot_name_input = st.text_input(
         "Bot name (auto-detect if blank)",
@@ -570,13 +578,13 @@ with st.sidebar:
             v1 = st.selectbox("Version A", session_labels, index=0)
             v2 = st.selectbox("Version B", session_labels,
                                index=min(1, len(session_labels)-1))
-            run_compare = st.button("⚡ Run Comparison", use_container_width=True)
+            run_compare = st.button("⚡ Run Comparison", width='stretch')
         else:
             run_compare = False
             v1, v2 = None, None
 
         st.markdown("---")
-        if st.button("🗑 Clear All", use_container_width=True):
+        if st.button("🗑 Clear All", width='stretch'):
             st.session_state.sessions = {}
             st.session_state.active_session = None
             st.rerun()
@@ -719,24 +727,24 @@ with tabs[0]:
     st.markdown("")
 
     # Bankroll chart
-    st.plotly_chart(chart_bankroll(rounds_df), use_container_width=True)
+    st.plotly_chart(chart_bankroll(rounds_df), width='stretch')
 
     col1, col2 = st.columns(2)
     with col1:
-        st.plotly_chart(chart_round_pnl(rounds_df), use_container_width=True)
+        st.plotly_chart(chart_round_pnl(rounds_df), width='stretch')
     with col2:
         window = st.slider("Win rate window", 20, 200, 50, step=10, key='wr_window')
-        st.plotly_chart(chart_rolling_winrate(rounds_df, window), use_container_width=True)
+        st.plotly_chart(chart_rolling_winrate(rounds_df, window), width='stretch')
 
     col1, col2 = st.columns(2)
     with col1:
         section("📍 Position Breakdown")
-        st.plotly_chart(chart_position_breakdown(rounds_df), use_container_width=True)
+        st.plotly_chart(chart_position_breakdown(rounds_df), width='stretch')
     with col2:
         section("🗺 Profit by Decision Street")
         pbs = metrics.get('profit_by_street', {})
         if pbs:
-            st.plotly_chart(chart_profit_by_street(pbs), use_container_width=True)
+            st.plotly_chart(chart_profit_by_street(pbs), width='stretch')
 
     section("🃏 Preflop Metrics")
     p1, p2, p3, p4, p5 = st.columns(5)
@@ -755,7 +763,7 @@ with tabs[0]:
                 st.metric(act.capitalize(), f"{val:+.1f}")
 
     section("📊 Action Frequency by Street")
-    st.plotly_chart(chart_action_frequency(actions_df, bot_name), use_container_width=True)
+    st.plotly_chart(chart_action_frequency(actions_df, bot_name), width='stretch')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -788,19 +796,19 @@ with tabs[1]:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.plotly_chart(chart_auction_dist(rounds_df, bot_name), use_container_width=True)
+        st.plotly_chart(chart_auction_dist(rounds_df, bot_name), width='stretch')
     with col2:
-        st.plotly_chart(chart_auction_ev(rounds_df, bot_name), use_container_width=True)
+        st.plotly_chart(chart_auction_ev(rounds_df, bot_name), width='stretch')
 
     col1, col2 = st.columns(2)
     with col1:
         fig = chart_bid_vs_strength(rounds_df)
         if fig:
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("No hand strength data available")
     with col2:
-        st.plotly_chart(chart_street_pnl_scatter(rounds_df), use_container_width=True)
+        st.plotly_chart(chart_street_pnl_scatter(rounds_df), width='stretch')
 
     section("💡 Bid by Hand Strength")
     bid_strength = auc.get('avg_bid_by_hand_strength', {})
@@ -821,12 +829,12 @@ with tabs[1]:
             name='Individual bids'))
         fig.add_trace(go.Scatter(x=df_bids['round_num'], y=roll_bid,
             line=dict(color=CYAN, width=2), name='30-round avg'))
-        fig.update_layout(**PLOTLY_THEME, height=280,
+        _apply_theme(fig, height=280,
             margin=dict(l=10, r=10, t=30, b=10),
             title=dict(text='Bid Amount Over Time', font=dict(color=CYAN, size=14)),
             xaxis_title='Round', yaxis_title='Bid (chips)',
             legend=dict(bgcolor='rgba(0,0,0,0)'))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -847,7 +855,7 @@ with tabs[2]:
     col1, col2 = st.columns(2)
     with col1:
         st.plotly_chart(chart_fold_heatmap(rounds_df, actions_df, bot_name),
-            use_container_width=True)
+            width='stretch')
     with col2:
         # Barrel profit table
         section("🎯 Barrel EV Breakdown")
@@ -863,10 +871,10 @@ with tabs[2]:
             text=[f'{v:+.1f}' for v in vals], textposition='outside',
             textfont=dict(color='white'), marker_line_width=0))
         fig.add_hline(y=0, line_color='#2d3561')
-        fig.update_layout(**PLOTLY_THEME, height=280,
+        _apply_theme(fig, height=280,
             margin=dict(l=10, r=10, t=30, b=10),
             title=dict(text='Avg Profit by Barrel Count', font=dict(color=CYAN, size=14)))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     col1, col2 = st.columns(2)
     with col1:
@@ -876,12 +884,12 @@ with tabs[2]:
         fig = px.sunburst(street_mix, path=['street', 'action'], values='count',
             color='action',
             color_discrete_map={'fold': RED, 'call': BLUE, 'check': YELLOW, 'raise': GREEN})
-        fig.update_layout(**PLOTLY_THEME, height=340,
+        _apply_theme(fig, height=340,
             margin=dict(l=10, r=10, t=10, b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     with col2:
         section("💰 Opponent Breakdown")
-        st.plotly_chart(chart_opponent_breakdown(rounds_df), use_container_width=True)
+        st.plotly_chart(chart_opponent_breakdown(rounds_df), width='stretch')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -912,11 +920,11 @@ with tabs[4]:
                 hole=0.6,
                 marker=dict(colors=[RED, YELLOW, GREEN]),
                 textfont=dict(color='white')))
-            fig.update_layout(**PLOTLY_THEME, height=260,
+            _apply_theme(fig, height=260,
                 margin=dict(l=10, r=10, t=10, b=10),
                 showlegend=True,
                 legend=dict(bgcolor='rgba(0,0,0,0)', font=dict(color='white')))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
         with col2:
             # Category breakdown
@@ -928,11 +936,11 @@ with tabs[4]:
                 marker_color=PURPLE, marker_line_width=0,
                 text=list(cat_counts.values()), textposition='outside',
                 textfont=dict(color='white')))
-            fig.update_layout(**PLOTLY_THEME, height=260,
+            _apply_theme(fig, height=260,
                 margin=dict(l=10, r=10, t=30, b=10),
                 title=dict(text='Leaks by Category', font=dict(color=CYAN, size=13)),
                 yaxis_title='Count')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
         st.markdown("---")
 
@@ -996,7 +1004,7 @@ with tabs[5]:
             vb_label = st.selectbox("📦 Version B", all_labels,
                                      index=min(1, len(all_labels)-1), key='vb')
 
-        if st.button("⚡ Run Comparison", use_container_width=True, type='primary') or run_compare:
+        if st.button("⚡ Run Comparison", width='stretch', type='primary') or run_compare:
             sa = sessions[va_label]
             sb = sessions[vb_label]
 
@@ -1017,7 +1025,7 @@ with tabs[5]:
                 return f'color: {YELLOW}'
 
             styled = df_comp.style.applymap(highlight_delta, subset=delta_cols)
-            st.dataframe(styled, use_container_width=True)
+            st.dataframe(styled, width='stretch')
 
             if delta_cols:
                 delta_col = delta_cols[0]
@@ -1029,13 +1037,13 @@ with tabs[5]:
                     text=[f'{v:+.3f}' for v in sub.values], textposition='outside',
                     textfont=dict(color='white')))
                 fig.add_vline(x=0, line_color='#2d3561')
-                fig.update_layout(**PLOTLY_THEME,
+                _apply_theme(fig,
                     height=max(350, len(sub) * 30),
                     margin=dict(l=10, r=80, t=40, b=10),
                     title=dict(text=f'Metric Delta: {va_label} → {vb_label}',
                                font=dict(color=CYAN, size=14)),
                     xaxis_title='Change')
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
 
             # Bankroll comparison
             st.markdown("### 📈 Bankroll Comparison")
@@ -1046,11 +1054,11 @@ with tabs[5]:
                     x=s['rounds_df']['round_num'], y=pnl,
                     line=dict(color=color, width=2), name=label))
             fig.add_hline(y=0, line_color='#2d3561', line_width=1)
-            fig.update_layout(**PLOTLY_THEME, height=340,
+            _apply_theme(fig, height=340,
                 margin=dict(l=10, r=10, t=30, b=10),
                 title=dict(text='Cumulative P&L Comparison', font=dict(color=CYAN, size=14)),
                 legend=dict(bgcolor='rgba(0,0,0,0)'))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
             # Download comparison CSV
             csv_buf = io.StringIO()
@@ -1077,14 +1085,14 @@ with tabs[6]:
         show_cols = st.multiselect("Columns", all_cols,
             default=[c for c in default_cols if c in all_cols])
         df_display = rounds_df[show_cols] if show_cols else rounds_df
-        st.dataframe(df_display, use_container_width=True, height=450)
+        st.dataframe(df_display, width='stretch', height=450)
 
     with exp_tab2:
         st.caption("Full actions DataFrame")
         street_sel = st.multiselect("Street filter", ['preflop','flop','turn','river'],
             default=['preflop','flop','turn','river'])
         df_acts_show = actions_df[actions_df['street'].isin(street_sel)]
-        st.dataframe(df_acts_show, use_container_width=True, height=450)
+        st.dataframe(df_acts_show, width='stretch', height=450)
 
     with exp_tab3:
         st.markdown("### 📥 Export Options")
@@ -1093,11 +1101,11 @@ with tabs[6]:
         with c1:
             csv_rounds = rounds_df.to_csv(index=False).encode()
             st.download_button("📊 Rounds CSV", csv_rounds,
-                f"rounds_{bot_name}.csv", "text/csv", use_container_width=True)
+                f"rounds_{bot_name}.csv", "text/csv", width='stretch')
         with c2:
             csv_actions = actions_df.to_csv(index=False).encode()
             st.download_button("🃏 Actions CSV", csv_actions,
-                f"actions_{bot_name}.csv", "text/csv", use_container_width=True)
+                f"actions_{bot_name}.csv", "text/csv", width='stretch')
         with c3:
             metrics_json = json.dumps(
                 {k: (v if not isinstance(v, dict) or all(isinstance(vv, (int,float,str,type(None)))
@@ -1106,7 +1114,7 @@ with tabs[6]:
                  if k not in ('opponent_breakdown',)},
                 default=str, indent=2)
             st.download_button("📈 Metrics JSON", metrics_json.encode(),
-                f"metrics_{bot_name}.json", "application/json", use_container_width=True)
+                f"metrics_{bot_name}.json", "application/json", width='stretch')
 
         st.markdown("---")
         st.markdown("### 📄 Full Metrics Summary")
