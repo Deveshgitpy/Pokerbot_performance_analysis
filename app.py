@@ -110,7 +110,7 @@ _AXES = dict(gridcolor='#1e2640', linecolor='#2d3561')
 
 def _apply_theme(fig, **kwargs):
     """Apply dark theme + axis grid, then any extra layout kwargs."""
-    _apply_theme(fig, **kwargs)
+    fig.update_layout(**PLOTLY_THEME, **kwargs)
     fig.update_xaxes(**_AXES)
     fig.update_yaxes(**_AXES)
     return fig
@@ -127,7 +127,9 @@ PURPLE = '#c792ea'
 
 @st.cache_data(show_spinner=False)
 def parse_and_analyse(file_bytes: bytes, filename: str, bot_name: str):
-    with tempfile.NamedTemporaryFile(suffix='.glog', delete=False, mode='wb') as f:
+    # Preserve original extension so gzip detection works correctly
+    suffix = Path(filename).suffix or '.glog'
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False, mode='wb') as f:
         f.write(file_bytes)
         tmp_path = f.name
     try:
@@ -439,7 +441,7 @@ def chart_version_delta(comp_df):
         text=[f'{v:+.3f}' for v in sub.values], textposition='outside',
         textfont=dict(color='white')))
     fig.add_vline(x=0, line_color='#2d3561')
-    fig.update_layout(**PLOTLY_THEME, height=max(350, len(sub) * 28),
+    _apply_theme(fig, height=max(350, len(sub) * 28),
         margin=dict(l=10, r=60, t=40, b=10),
         title=dict(text=f'Version Delta: {col}', font=dict(color=CYAN, size=14)),
         xaxis_title='Change')
