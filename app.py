@@ -100,7 +100,7 @@ st.markdown("""
 
 # ─── Plotly theme ─────────────────────────────────────────────────────────────
 # xaxis/yaxis are NOT inside PLOTLY_THEME to avoid duplicate-keyword crashes
-# when individual charts also pass yaxis= explicitly. Use _apply_theme() instead.
+# when individual charts also pass yaxis_title= explicitly. Use _apply_theme().
 PLOTLY_THEME = dict(
     paper_bgcolor='#0e1117',
     plot_bgcolor='#161b27',
@@ -172,7 +172,6 @@ def chart_bankroll(rounds_df):
     roll50 = pnl.rolling(50, min_periods=1).mean()
 
     fig = go.Figure()
-    # Fill above/below zero
     pos_pnl = pnl.where(pnl >= 0, 0)
     neg_pnl = pnl.where(pnl < 0, 0)
     fig.add_trace(go.Scatter(x=rounds_df['round_num'], y=pos_pnl,
@@ -342,8 +341,11 @@ def chart_fold_heatmap(rounds_df, actions_df, bot_name):
         colorscale='RdYlGn_r', zmin=0, zmax=100,
         text=z_text, texttemplate='%{text}',
         textfont=dict(size=13, color='white'),
-        colorbar=dict(title='Fold %', tickfont=dict(color='#8892b0'),
-                      titlefont=dict(color='#8892b0'))))
+        # FIX: use nested title dict instead of deprecated titlefont
+        colorbar=dict(
+            title=dict(text='Fold %', font=dict(color='#8892b0')),
+            tickfont=dict(color='#8892b0'),
+        )))
     _apply_theme(fig, height=320,
         margin=dict(l=10, r=10, t=40, b=10),
         title=dict(text='Fold Rate by Hand Strength & Position', font=dict(color=CYAN, size=14)),
@@ -387,7 +389,6 @@ def chart_rolling_winrate(rounds_df, window=50):
 
 
 def chart_street_pnl_scatter(rounds_df):
-    """Scatter: round payoff colored by whether bot won the auction."""
     df = rounds_df.copy()
     won = df[df['bot_won_auction'] == True]
     lost = df[df['bot_won_auction'] == False]
@@ -408,7 +409,6 @@ def chart_street_pnl_scatter(rounds_df):
 
 
 def chart_position_breakdown(rounds_df):
-    """Profit breakdown by position."""
     df = rounds_df.groupby('bot_position').agg(
         total=('bot_payoff', 'sum'),
         avg=('bot_payoff', 'mean'),
@@ -429,7 +429,6 @@ def chart_position_breakdown(rounds_df):
 
 
 def chart_version_delta(comp_df):
-    """Delta bar chart for version comparison."""
     delta_cols = [c for c in comp_df.columns if c.startswith('Δ')]
     if not delta_cols:
         return None
@@ -490,7 +489,6 @@ def render_hand_browser(rounds_df, actions_df, bot_name):
 
     st.markdown(f"**{len(df)} hands** matching filters")
 
-    # Show as mini-cards
     show_n = st.slider("Show top N hands (sorted by |payoff|)", 5, min(50, len(df)), 10)
     df_show = df.reindex(df['bot_payoff'].abs().sort_values(ascending=False).index).head(show_n)
 
@@ -500,7 +498,6 @@ def render_hand_browser(rounds_df, actions_df, bot_name):
         card_class = "hand-win" if payoff >= 0 else "hand-loss"
         payoff_str = f'<span style="color:{GREEN if payoff>=0 else RED};font-weight:700">{payoff:+,} chips</span>'
 
-        # Actions for this round
         rnd_acts = actions_df[actions_df['round_num'] == rnd]
         act_str = ""
         for _, a in rnd_acts.iterrows():
@@ -525,7 +522,7 @@ def render_hand_browser(rounds_df, actions_df, bot_name):
 # ─── Session state ────────────────────────────────────────────────────────────
 
 if 'sessions' not in st.session_state:
-    st.session_state.sessions = {}   # {label: {rounds_df, actions_df, metrics, leaks, bot_name}}
+    st.session_state.sessions = {}
 if 'active_session' not in st.session_state:
     st.session_state.active_session = None
 
@@ -598,7 +595,6 @@ with st.sidebar:
 # ─── Main area ────────────────────────────────────────────────────────────────
 
 if not st.session_state.sessions:
-    # Landing page
     st.markdown("""
     <div style="text-align:center;padding:60px 20px">
         <div style="font-size:72px">🃏</div>
@@ -676,7 +672,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Leak severity strip
 if leaks:
     highs  = sum(1 for l in leaks if l.severity == 'HIGH')
     meds   = sum(1 for l in leaks if l.severity == 'MEDIUM')
@@ -708,7 +703,6 @@ tabs = st.tabs([
 # TAB 1 — OVERVIEW
 # ══════════════════════════════════════════════════════════════════════════════
 with tabs[0]:
-    # Top KPIs
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     total = metrics.get('total_payoff', 0)
     avg   = metrics.get('avg_payoff_per_round', 0)
@@ -727,8 +721,6 @@ with tabs[0]:
         st.metric("Rounds", f"{len(rounds_df):,}")
 
     st.markdown("")
-
-    # Bankroll chart
     st.plotly_chart(chart_bankroll(rounds_df), width='stretch')
 
     col1, col2 = st.columns(2)
@@ -820,7 +812,6 @@ with tabs[1]:
             with col:
                 st.metric(bucket, f"{val:.0f} chips")
 
-    # Bid timeline
     section("📈 Bid Timeline")
     df_bids = rounds_df[rounds_df['bot_bid'].notna()].copy()
     if not df_bids.empty:
@@ -859,7 +850,6 @@ with tabs[2]:
         st.plotly_chart(chart_fold_heatmap(rounds_df, actions_df, bot_name),
             width='stretch')
     with col2:
-        # Barrel profit table
         section("🎯 Barrel EV Breakdown")
         barrel_data = {
             '1 Barrel (flop only)': turn.get('avg_profit_2barrel', 0),
@@ -910,7 +900,6 @@ with tabs[4]:
     if not leaks:
         st.success("✅ No significant strategic leaks detected in this log!")
     else:
-        # Summary donut
         col1, col2 = st.columns([1, 2])
         with col1:
             sev_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
@@ -929,7 +918,6 @@ with tabs[4]:
             st.plotly_chart(fig, width='stretch')
 
         with col2:
-            # Category breakdown
             cat_counts = {}
             for l in leaks:
                 cat_counts[l.category] = cat_counts.get(l.category, 0) + 1
@@ -945,8 +933,6 @@ with tabs[4]:
             st.plotly_chart(fig, width='stretch')
 
         st.markdown("---")
-
-        # Severity filter
         sev_filter = st.multiselect("Show severities", ['HIGH', 'MEDIUM', 'LOW'],
                                      default=['HIGH', 'MEDIUM', 'LOW'])
 
@@ -967,7 +953,6 @@ with tabs[4]:
   <div class="leak-rec">💡 Fix: {leak.recommendation}</div>
 </div>""", unsafe_allow_html=True)
 
-    # Download leak report
     if leaks:
         st.markdown("---")
         leak_text = "\n\n".join(
@@ -1015,9 +1000,7 @@ with tabs[5]:
             df_comp = comp.compare_versions(versions)
 
             st.markdown("### 📊 Side-by-Side Metrics")
-            # Colour the delta column
             delta_cols = [c for c in df_comp.columns if c.startswith('Δ')]
-            version_cols = [c for c in df_comp.columns if not c.startswith('Δ')]
 
             def highlight_delta(val):
                 if pd.isna(val): return ''
@@ -1047,7 +1030,6 @@ with tabs[5]:
                     xaxis_title='Change')
                 st.plotly_chart(fig, width='stretch')
 
-            # Bankroll comparison
             st.markdown("### 📈 Bankroll Comparison")
             fig = go.Figure()
             for label, s, color in [(va_label, sa, BLUE), (vb_label, sb, GREEN)]:
@@ -1062,7 +1044,6 @@ with tabs[5]:
                 legend=dict(bgcolor='rgba(0,0,0,0)'))
             st.plotly_chart(fig, width='stretch')
 
-            # Download comparison CSV
             csv_buf = io.StringIO()
             df_comp.to_csv(csv_buf)
             st.download_button("📥 Download Comparison CSV",
@@ -1079,7 +1060,6 @@ with tabs[6]:
 
     with exp_tab1:
         st.caption("Full rounds DataFrame — sortable, filterable")
-        # Select columns to display
         all_cols = rounds_df.columns.tolist()
         default_cols = ['round_num', 'bot_position', 'bot_hole', 'bot_bid', 'opp_bid',
                         'auction_winner', 'revealed_card', 'bot_payoff', 'hand_bucket',
@@ -1098,7 +1078,6 @@ with tabs[6]:
 
     with exp_tab3:
         st.markdown("### 📥 Export Options")
-
         c1, c2, c3 = st.columns(3)
         with c1:
             csv_rounds = rounds_df.to_csv(index=False).encode()
