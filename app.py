@@ -1,7 +1,4 @@
-"""
-app.py — IIT Pokerbots Log Analysis · Streamlit Dashboard
-Run: streamlit run app.py
-"""
+
 
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
