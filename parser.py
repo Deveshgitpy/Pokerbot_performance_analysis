@@ -1,7 +1,3 @@
-"""
-parser.py — IIT Pokerbots Sneak Peek Hold'em Log Parser
-Converts raw .glog/.fz logs into structured pandas DataFrames.
-"""
 
 import re
 import pandas as pd
